@@ -1,7 +1,9 @@
 
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+// @ts-ignore
 import { Water } from '../libs/Water';
+// @ts-ignore
 import { Sky } from '../libs/sky';
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
