@@ -10,6 +10,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 import { Flow } from 'three/examples/jsm/modifiers/CurveModifier.js';
 import { GUI } from 'dat.gui';
 import { useRef, useEffect } from 'react'
+import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader';
 let
 stats = new (Stats as any),
 water = new (Water as any),
@@ -46,7 +47,7 @@ function init(container:HTMLDivElement) {
     camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
     camera.position.set(30, 30, 100);
     const axesHelper = new THREE.AxesHelper(100);
-    // scene.add(axesHelper);
+    scene.add(axesHelper);
 
 
     // Water
@@ -183,20 +184,20 @@ function init(container:HTMLDivElement) {
 
     // curve
     const initialPoints = 
-        [new THREE.Vector3(270.7855573168722, 11.5768653140154, -5.6054068667271935),
-            new THREE.Vector3(70.85452723913048, -200.31900590487544, -3.6318365646886615),
-            new THREE.Vector3(-270.2765413677177, -70.10180620668058, 120.79604394126204),
-            new THREE.Vector3(-133.38801353952266, 100.24418814886636, 89.42525594078083),
-            new THREE.Vector3(58.83462451300599, 162.71071391573383, 60.9117545354481)
-        
-    ]
+    [new THREE.Vector3(270.7855573168722, 11.5768653140154, -5.6054068667271935),
+        new THREE.Vector3(70.85452723913048, -200.31900590487544, -3.6318365646886615),
+        new THREE.Vector3(-270.2765413677177, -70.10180620668058, 120.79604394126204),
+        new THREE.Vector3(-133.38801353952266, 100.24418814886636, 89.42525594078083),
+        new THREE.Vector3(58.83462451300599, 162.71071391573383, 60.9117545354481)
+    
+]
     const boxGeometry = new THREE.BoxGeometry( 5, 5, 5 );
     const boxMaterial = new THREE.MeshBasicMaterial();
     for ( const handlePos of initialPoints ) {
         const handle = new THREE.Mesh( boxGeometry, boxMaterial );
         handle.position.copy( handlePos as THREE.Vector3);
         curveHandles.push( handle );
-        // scene.add( handle );
+        scene.add( handle );
     }
     curve = new THREE.CatmullRomCurve3(
         curveHandles.map( ( handle:any ) => handle.position ),
@@ -208,24 +209,31 @@ function init(container:HTMLDivElement) {
         new THREE.BufferGeometry().setFromPoints( points ),
         new THREE.LineBasicMaterial( { color: 0x00ff00 } )
     );
-    // scene.add( line );
+    scene.add( line );
    
 
 }
 const objLoader = new OBJLoader()
+const mtlLoader = new MTLLoader()
+mtlLoader.load('whale-obj/whale.mtl',(materials)=>{
+    console.log(materials)
+})
 objLoader.load(
     'whale-obj/whale.obj',
     (object) => {
         var	material =  new THREE.MeshNormalMaterial( { flatShading: true } ) 
         console.log(object)
         whale  = object.children[0];
-        (whale  as THREE.Mesh).material = material
+        (whale  as THREE.Mesh).material = material;
+        // whale.rotation.set( 0, Math.PI /, 0 )
         flow = new Flow(whale as THREE.Mesh);
+       
+        
+        // flow.object3D.scale.setScalar( 0.4 );
+        // flow.object3D.position.set( 0, 0, 0 );
+        // flow.object3D.rotation.set( 0, Math.PI, 0 )
         flow.updateCurve( 0, curve );
         scene.add( flow.object3D )
-        flow.object3D.scale.setScalar( 0.4 );
-        flow.object3D.position.set( 0, 0, 0 );
-        flow.object3D.rotation.set( 0, Math.PI, 0 )
     },
     (xhr) => {
         console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
@@ -247,7 +255,7 @@ function render() {
 
     const time = performance.now() * 0.001;
     if ( flow ) {
-        flow.moveAlongCurve( 0.001);
+        flow.moveAlongCurve( 0.0003);
     }
     // console.log(flow)
     // flow.updateCurve( time, curve );
