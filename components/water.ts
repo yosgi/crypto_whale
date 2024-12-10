@@ -8,21 +8,39 @@ import {
 	ShaderMaterial,
 	UniformsLib,
 	UniformsUtils,
+	Vector2,
 	Vector3,
 	Vector4,
-	WebGLRenderTarget
+	WebGLRenderTarget,
+	WebGLRenderer,
+	Scene,
+	Camera,
+	BufferGeometry
 } from 'three';
 
-/**
- * Work based on :
- * https://github.com/Slayvin: Flat mirror for three.js
- * https://home.adelphi.edu/~stemkoski/ : An implementation of water shader based on the flat mirror
- * http://29a.ch/ && http://29a.ch/slides/2012/webglwater/ : Water shader explanations in WebGL
- */
+interface WaterOptions {
+	textureWidth?: number;
+	textureHeight?: number;
+	clipBias?: number;
+	alpha?: number;
+	time?: number;
+	waterNormals?: THREE.Texture | null;
+	sunDirection?: Vector3;
+	sunColor?: Color | number;
+	waterColor?: Color | number;
+	eye?: Vector3;
+	distortionScale?: number;
+	side?: number;
+	fog?: boolean;
+}
 
 class Water extends Mesh {
 
-	constructor( geometry, options = {} ) {
+	isWater: boolean;
+	material: ShaderMaterial;
+	onBeforeRender: ( renderer: WebGLRenderer, scene: Scene, camera: Camera ) => void;
+
+	constructor( geometry: BufferGeometry, options: WaterOptions = {} ) {
 
 		super( geometry );
 
@@ -30,29 +48,27 @@ class Water extends Mesh {
 
 		const scope = this;
 
-		const textureWidth = options.textureWidth !== undefined ? options.textureWidth : 512;
-		const textureHeight = options.textureHeight !== undefined ? options.textureHeight : 512;
+		const textureWidth = ( options.textureWidth !== undefined ) ? options.textureWidth : 512;
+		const textureHeight = ( options.textureHeight !== undefined ) ? options.textureHeight : 512;
 
-		const clipBias = options.clipBias !== undefined ? options.clipBias : 0.0;
-		const alpha = options.alpha !== undefined ? options.alpha : 1.0;
-		const time = options.time !== undefined ? options.time : 0.0;
-		const normalSampler = options.waterNormals !== undefined ? options.waterNormals : null;
-		const sunDirection = options.sunDirection !== undefined ? options.sunDirection : new Vector3( 0.70707, 0.70707, 0.0 );
-		const sunColor = new Color( options.sunColor !== undefined ? options.sunColor : 0xffffff );
-		const waterColor = new Color( options.waterColor !== undefined ? options.waterColor : 0x7F7F7F );
-		const eye = options.eye !== undefined ? options.eye : new Vector3( 0, 0, 0 );
-		const distortionScale = options.distortionScale !== undefined ? options.distortionScale : 20.0;
-		const side = options.side !== undefined ? options.side : FrontSide;
-		const fog = options.fog !== undefined ? options.fog : false;
-
-		//
+		const clipBias = ( options.clipBias !== undefined ) ? options.clipBias : 0.0;
+		const alpha = ( options.alpha !== undefined ) ? options.alpha : 1.0;
+		const time = ( options.time !== undefined ) ? options.time : 0.0;
+		const normalSampler = ( options.waterNormals !== undefined ) ? options.waterNormals : null;
+		const sunDirection = ( options.sunDirection !== undefined ) ? options.sunDirection.clone() : new Vector3( 0.70707, 0.70707, 0.0 );
+		const sunColor = new Color( ( options.sunColor !== undefined ) ? options.sunColor : 0xffffff );
+		const waterColor = new Color( ( options.waterColor !== undefined ) ? options.waterColor : 0x7F7F7F );
+		const eye = ( options.eye !== undefined ) ? options.eye.clone() : new Vector3( 0, 0, 0 );
+		const distortionScale = ( options.distortionScale !== undefined ) ? options.distortionScale : 20.0;
+		const side = ( options.side !== undefined ) ? options.side : FrontSide;
+		const fog = ( options.fog !== undefined ) ? options.fog : false;
 
 		const mirrorPlane = new Plane();
 		const normal = new Vector3();
 		const mirrorWorldPosition = new Vector3();
 		const cameraWorldPosition = new Vector3();
 		const rotationMatrix = new Matrix4();
-		const lookAtPosition = new Vector3( 0, 0, - 1 );
+		const lookAtPosition = new Vector3( 0, 0, -1 );
 		const clipPlane = new Vector4();
 
 		const view = new Vector3();
@@ -71,8 +87,8 @@ class Water extends Mesh {
 				UniformsLib[ 'fog' ],
 				UniformsLib[ 'lights' ],
 				{
-					'normalSampler': { value: null },
-					'mirrorSampler': { value: null },
+					'normalSampler': { value: null as any },
+					'mirrorSampler': { value: null as any },
 					'alpha': { value: 1.0 },
 					'time': { value: 0.0 },
 					'size': { value: 1.0 },
@@ -81,7 +97,9 @@ class Water extends Mesh {
 					'sunColor': { value: new Color( 0x7F7F7F ) },
 					'sunDirection': { value: new Vector3( 0.70707, 0.70707, 0 ) },
 					'eye': { value: new Vector3() },
-					'waterColor': { value: new Color( 0x555555 ) }
+					'waterColor': { value: new Color( 0x555555 ) },
+					'rippleCenter': { value: new Vector2(0, 0) }, 
+					'rippleTime': { value: 0.0 }
 				}
 			] ),
 
@@ -104,12 +122,12 @@ class Water extends Mesh {
 					vec4 mvPosition =  modelViewMatrix * vec4( position, 1.0 );
 					gl_Position = projectionMatrix * mvPosition;
 
-				#include <beginnormal_vertex>
-				#include <defaultnormal_vertex>
-				#include <logdepthbuf_vertex>
-				#include <fog_vertex>
-				#include <shadowmap_vertex>
-			}`,
+					#include <beginnormal_vertex>
+					#include <defaultnormal_vertex>
+					#include <logdepthbuf_vertex>
+					#include <fog_vertex>
+					#include <shadowmap_vertex>
+				}`,
 
 			fragmentShader: /* glsl */`
 				uniform sampler2D mirrorSampler;
@@ -163,7 +181,7 @@ class Water extends Mesh {
 					vec3 diffuseLight = vec3(0.0);
 					vec3 specularLight = vec3(0.0);
 
-					vec3 worldToEye = eye-worldPosition.xyz;
+					vec3 worldToEye = eye - worldPosition.xyz;
 					vec3 eyeDirection = normalize( worldToEye );
 					sunLight( surfaceNormal, eyeDirection, 100.0, 2.0, 0.5, diffuseLight, specularLight );
 
@@ -183,7 +201,6 @@ class Water extends Mesh {
 					#include <tonemapping_fragment>
 					#include <fog_fragment>
 				}`
-
 		};
 
 		const material = new ShaderMaterial( {
@@ -192,7 +209,6 @@ class Water extends Mesh {
 			uniforms: UniformsUtils.clone( mirrorShader.uniforms ),
 			lights: true,
 			side: side,
-			fog: fog
 		} );
 
 		material.uniforms[ 'mirrorSampler' ].value = renderTarget.texture;
@@ -204,12 +220,11 @@ class Water extends Mesh {
 		material.uniforms[ 'waterColor' ].value = waterColor;
 		material.uniforms[ 'sunDirection' ].value = sunDirection;
 		material.uniforms[ 'distortionScale' ].value = distortionScale;
-
 		material.uniforms[ 'eye' ].value = eye;
 
-		scope.material = material;
+		this.material = material;
 
-		scope.onBeforeRender = function ( renderer, scene, camera ) {
+		this.onBeforeRender = function ( renderer: WebGLRenderer, scene: Scene, camera: Camera ) {
 
 			mirrorWorldPosition.setFromMatrixPosition( scope.matrixWorld );
 			cameraWorldPosition.setFromMatrixPosition( camera.matrixWorld );
@@ -222,7 +237,6 @@ class Water extends Mesh {
 			view.subVectors( mirrorWorldPosition, cameraWorldPosition );
 
 			// Avoid rendering when mirror is facing away
-
 			if ( view.dot( normal ) > 0 ) return;
 
 			view.reflect( normal ).negate();
@@ -244,8 +258,7 @@ class Water extends Mesh {
 			mirrorCamera.up.reflect( normal );
 			mirrorCamera.lookAt( target );
 
-			mirrorCamera.far = camera.far; // Used in WebGLBackground
-
+			mirrorCamera.far = ( camera as PerspectiveCamera ).far; // assuming camera is PerspectiveCamera; adjust if needed
 			mirrorCamera.updateMatrixWorld();
 			mirrorCamera.projectionMatrix.copy( camera.projectionMatrix );
 
@@ -259,8 +272,7 @@ class Water extends Mesh {
 			textureMatrix.multiply( mirrorCamera.projectionMatrix );
 			textureMatrix.multiply( mirrorCamera.matrixWorldInverse );
 
-			// Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
-			// Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+			// Oblique clipping
 			mirrorPlane.setFromNormalAndCoplanarPoint( normal, mirrorWorldPosition );
 			mirrorPlane.applyMatrix4( mirrorCamera.matrixWorldInverse );
 
@@ -285,7 +297,6 @@ class Water extends Mesh {
 			eye.setFromMatrixPosition( camera.matrixWorld );
 
 			// Render
-
 			const currentRenderTarget = renderer.getRenderTarget();
 
 			const currentXrEnabled = renderer.xr.enabled;
@@ -297,8 +308,7 @@ class Water extends Mesh {
 			renderer.shadowMap.autoUpdate = false; // Avoid re-computing shadows
 
 			renderer.setRenderTarget( renderTarget );
-
-			renderer.state.buffers.depth.setMask( true ); // make sure the depth buffer is writable so it can be properly cleared, see #18897
+			renderer.state.buffers.depth.setMask( true ); 
 
 			if ( renderer.autoClear === false ) renderer.clear();
 			renderer.render( scene, mirrorCamera );
@@ -311,13 +321,9 @@ class Water extends Mesh {
 			renderer.setRenderTarget( currentRenderTarget );
 
 			// Restore viewport
-
-			const viewport = camera.viewport;
-
+			const viewport = ( camera as any ).viewport;
 			if ( viewport !== undefined ) {
-
 				renderer.state.viewport( viewport );
-
 			}
 
 		};

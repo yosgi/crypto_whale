@@ -1,25 +1,24 @@
 
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-// @ts-ignore
-import { Water } from './water';
-// @ts-ignore
 import { Sky } from './sky';
+import { Water } from './water';
+
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 import { Flow } from 'three/examples/jsm/modifiers/CurveModifier.js';
 import { GUI } from 'dat.gui';
 import { useRef, useEffect } from 'react'
 let
-stats = new (Stats as any),
-water = new (Water as any),
-sun = new THREE.Vector3(),
-whale = null,
-curve = new THREE.CatmullRomCurve3(),
-flow = null as any;
-let camera:THREE.PerspectiveCamera, scene: THREE.Scene = new THREE.Scene(), renderer: THREE.WebGLRenderer;
-let controls,mesh:THREE.Mesh ;
-let curveHandles:any = [];
+    stats = new (Stats as any),
+    water = new (Water as any),
+    sun = new THREE.Vector3(),
+    whale = null,
+    curve = new THREE.CatmullRomCurve3(),
+    flow = null as any;
+let camera: THREE.PerspectiveCamera, scene: THREE.Scene = new THREE.Scene(), renderer: THREE.WebGLRenderer;
+let controls, mesh: THREE.Mesh;
+let curveHandles: any = [];
 function onWindowResize() {
 
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -28,9 +27,9 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 
 }
-function init(container:HTMLDivElement) {
+function init(container: HTMLDivElement) {
 
-   
+
 
     //WebGLRenderer
 
@@ -96,14 +95,14 @@ function init(container:HTMLDivElement) {
         rotationZ: 0,
         scale: 0.5,
         translateX: 0,
-        translateY:0,
+        translateY: 0,
         translateZ: 0,
-        
+
 
     };
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    let renderTarget:THREE.WebGLRenderTarget;
+    let renderTarget: THREE.WebGLRenderTarget;
 
     function updateSun() {
 
@@ -125,7 +124,7 @@ function init(container:HTMLDivElement) {
     // create sun
     updateSun();
 
-    
+
 
     const geometry = new THREE.BoxGeometry(30, 30, 30);
     const material = new THREE.MeshStandardMaterial({ roughness: 0 });
@@ -143,7 +142,7 @@ function init(container:HTMLDivElement) {
 
     //
 
-    stats = new ( Stats as any )();
+    stats = new (Stats as any)();
     container && container.appendChild(stats.dom);
 
     // GUI
@@ -161,15 +160,15 @@ function init(container:HTMLDivElement) {
     folderWater.add(waterUniforms.distortionScale, 'value', 0, 8, 0.1).name('distortionScale');
     folderWater.add(waterUniforms.size, 'value', 0.1, 10, 0.1).name('size');
     folderWater.open();
-    
+
     const folderWhale = gui.addFolder('Whale');
-    gui.add( parameters, 'rotationX', -3, 3 ).step( 0.25 ).onChange( updateModel );
-    gui.add( parameters, 'rotationY', -3, 3 ).step( 0.25 ).onChange( updateModel );
-    gui.add( parameters, 'rotationZ', -3, 3 ).step( 0.25 ).onChange( updateModel );
-    gui.add( parameters, 'scale', 0.1, 400 ).step( 0.01 ).onChange( updateModel );
-    gui.add( parameters, 'translateX', -1000, 1000 ).step( 0.01 ).onChange( updateModel );
-    gui.add( parameters, 'translateY', -1000, 1000 ).step( 0.01 ).onChange( updateModel );
-    gui.add( parameters, 'translateZ', -1000, 1000 ).step( 0.01 ).onChange( updateModel );
+    gui.add(parameters, 'rotationX', -3, 3).step(0.25).onChange(updateModel);
+    gui.add(parameters, 'rotationY', -3, 3).step(0.25).onChange(updateModel);
+    gui.add(parameters, 'rotationZ', -3, 3).step(0.25).onChange(updateModel);
+    gui.add(parameters, 'scale', 0.1, 400).step(0.01).onChange(updateModel);
+    gui.add(parameters, 'translateX', -1000, 1000).step(0.01).onChange(updateModel);
+    gui.add(parameters, 'translateY', -1000, 1000).step(0.01).onChange(updateModel);
+    gui.add(parameters, 'translateZ', -1000, 1000).step(0.01).onChange(updateModel);
     function updateModel() {
         flow.object3D.rotation.x = parameters.rotationX;
         flow.object3D.rotation.y = parameters.rotationY;
@@ -182,50 +181,50 @@ function init(container:HTMLDivElement) {
     gui.close()
 
     // curve
-    const initialPoints = 
+    const initialPoints =
         [new THREE.Vector3(270.7855573168722, 11.5768653140154, -5.6054068667271935),
-            new THREE.Vector3(70.85452723913048, -200.31900590487544, -3.6318365646886615),
-            new THREE.Vector3(-270.2765413677177, -70.10180620668058, 120.79604394126204),
-            new THREE.Vector3(-133.38801353952266, 100.24418814886636, 89.42525594078083),
-            new THREE.Vector3(58.83462451300599, 162.71071391573383, 60.9117545354481)
-        
-    ]
-    const boxGeometry = new THREE.BoxGeometry( 5, 5, 5 );
+        new THREE.Vector3(70.85452723913048, -200.31900590487544, -3.6318365646886615),
+        new THREE.Vector3(-270.2765413677177, -70.10180620668058, 120.79604394126204),
+        new THREE.Vector3(-133.38801353952266, 100.24418814886636, 89.42525594078083),
+        new THREE.Vector3(58.83462451300599, 162.71071391573383, 60.9117545354481)
+
+        ]
+    const boxGeometry = new THREE.BoxGeometry(5, 5, 5);
     const boxMaterial = new THREE.MeshBasicMaterial();
-    for ( const handlePos of initialPoints ) {
-        const handle = new THREE.Mesh( boxGeometry, boxMaterial );
-        handle.position.copy( handlePos as THREE.Vector3);
-        curveHandles.push( handle );
+    for (const handlePos of initialPoints) {
+        const handle = new THREE.Mesh(boxGeometry, boxMaterial);
+        handle.position.copy(handlePos as THREE.Vector3);
+        curveHandles.push(handle);
         // scene.add( handle );
     }
     curve = new THREE.CatmullRomCurve3(
-        curveHandles.map( ( handle:any ) => handle.position ),
+        curveHandles.map((handle: any) => handle.position),
         true,
         'centripetal',
     );
-    const points = curve.getPoints( 200 );
+    const points = curve.getPoints(200);
     const line = new THREE.LineLoop(
-        new THREE.BufferGeometry().setFromPoints( points ),
-        new THREE.LineBasicMaterial( { color: 0x00ff00 } )
+        new THREE.BufferGeometry().setFromPoints(points),
+        new THREE.LineBasicMaterial({ color: 0x00ff00 })
     );
     // scene.add( line );
-   
+
 
 }
 const objLoader = new OBJLoader()
 objLoader.load(
     'whale-obj/whale.obj',
     (object) => {
-        var	material =  new THREE.MeshNormalMaterial( { flatShading: true } ) 
+        var material = new THREE.MeshNormalMaterial({ flatShading: true })
         console.log(object)
-        whale  = object.children[0];
-        (whale  as THREE.Mesh).material = material
+        whale = object.children[0];
+        (whale as THREE.Mesh).material = material
         flow = new Flow(whale as THREE.Mesh);
-        flow.updateCurve( 0, curve );
-        scene.add( flow.object3D )
-        flow.object3D.scale.setScalar( 0.4 );
-        flow.object3D.position.set( 0, 0, 0 );
-        flow.object3D.rotation.set( 0, Math.PI, 0 )
+        flow.updateCurve(0, curve);
+        scene.add(flow.object3D)
+        flow.object3D.scale.setScalar(0.4);
+        flow.object3D.position.set(0, 0, 0);
+        flow.object3D.rotation.set(0, Math.PI, 0)
     },
     (xhr) => {
         console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
@@ -246,8 +245,8 @@ function animate() {
 function render() {
 
     const time = performance.now() * 0.001;
-    if ( flow ) {
-        flow.moveAlongCurve( 0.001);
+    if (flow) {
+        flow.moveAlongCurve(0.001);
     }
     // console.log(flow)
     // flow.updateCurve( time, curve );
@@ -272,8 +271,8 @@ export default function Sea() {
 
     }, [])
     return (
-        <div id="container" ref={containerRef} style={{width:'100%',height:'100%'}}>
-        
+        <div id="container" ref={containerRef} style={{ width: '100%', height: '100%' }}>
+
         </div>
     )
 }
