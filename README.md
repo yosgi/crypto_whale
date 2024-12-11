@@ -1,6 +1,6 @@
 ## **README.md**
 
-# **Whale Water Splash Simulation with Three.js**
+# **Whale Water Simulation with Three.js**
 
 ### **Project Overview**  
 This project creates a **3D scene** using **Three.js** where a whale dynamically leaps out of the ocean and re-enters the water. The scene combines **dynamic textures** and **basic physics simulation**, along with customizable water animations and environmental settings.
